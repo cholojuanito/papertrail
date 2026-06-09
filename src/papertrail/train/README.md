@@ -5,9 +5,6 @@
 ## `data/` — synthetic document generation
 - ReportLab/Pillow generators per PLAN.md §4.3 (pharmacy, EOB, doctor visit, handwritten, ineligible edge cases, hard negatives). Each emits `(image, instruction, JSON)` triples.
 
-## `augment/` — Albumentations degradation
-- The §4.4 pipeline (rotation, JPEG artifacts, blur, perspective warp, noise) so clean PDFs generalise to phone photos.
-
 ## `modal/` — the training job
 - `job.py` — Modal A100-80GB entrypoint. Unsloth vision LoRA (primary) with the text-LoRA fallback path. Merge adapter → convert to GGUF + mmproj → push to HF Hub.
 
