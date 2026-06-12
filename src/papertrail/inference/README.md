@@ -8,7 +8,9 @@
 - `mock_client.py` — returns the same response shape with no GPU. Toggle via `PAPERTRAIL_MOCK=true`.
 
 ## `server/`
-- `args.py` — the confirmed llama-server flag set (PLAN.md §3.2): `--mmproj`, `--flash-attn on`, `--no-context-shift`, `--fit on`, `--jinja`, `--spec-default`, `--chat-template-kwargs`, `-c`. Two profiles: thinking-on (accuracy) / thinking-off (demo speed).
+- `args.py` — flag logic; `server.py` — entrypoint (`scripts/serve.sh` wraps it). Parses `llama-server --help` (real source of truth, captured to `_llama_server_help.txt`) and propagates **every** flag into an argparse CLI, then applies Nemotron defaults (`--mmproj`, `--ctx-size 16384`, `--flash-attn on`, `--fit on`, `--no-context-shift`, `--jinja`, `--alias`, `--parallel 1`). **No pinned `--n-gpu-layers`** — `--fit on` auto-offloads as many layers as fit in free VRAM (pinning ngl disables fit's back-off and OOMs a 22 GiB model on a busy 24 GiB card). Emits a `docker run`/local command or `LLAMA_ARG_*` env.
+  - Run: `python -m papertrail.inference.server.server --print` (dry-run) / `--run --detach`; refresh flags for your build with `--refresh-help`.
+  - Note: this wraps the **C++ `llama-server`**, not `llama_cpp.Llama` — the verified vision flags (`--mmproj`/`--jinja`/`--chat-template-kwargs`) are not on the Python class.
 
 **Must NOT contain:** eligibility/scoring rules, Gradio, DB.
 
