@@ -1,3 +1,12 @@
+```
+title: PaperTrail
+emoji: 🧾
+colorFrom: blue
+colorTo: green
+sdk: gradio
+app_file: main.py
+pinned: false
+```
 # PaperTrail
 ### *Every expense. Proven.*
 
@@ -18,89 +27,48 @@ Built for the [HuggingFace Build Small Hackathon 2026](https://huggingface.co/bu
 
 ---
 
-### Step 1 — Download the model
+### Step 1 — Get the model (skip if you already have it)
 
-Both the model GGUF and the multimodal projector are required. Vision will silently fail without the projector.
+Both the model GGUF and the multimodal projector are required — vision silently fails without the projector. Download into `<models-root>/<repo>` (the launcher auto-discovers the filenames):
 
 ```bash
-huggingface-cli download unsloth/NVIDIA-Nemotron-3-Nano-Omni-30B-A3B-Reasoning-GGUF \
-  --include "*UD-Q4_K_XL*" \
-  --include "*mmproj-BF16*" \
-  --local-dir ./models/nemotron
+hf download unsloth/NVIDIA-Nemotron-3-Nano-Omni-30B-A3B-Reasoning-GGUF \
+  --include "*UD-Q4_K_XL*" --include "*mmproj-BF16*" \
+  --local-dir ./models/NVIDIA-Nemotron-3-Nano-Omni-30B-A3B-Reasoning-GGUF
 ```
 
-Result:
-```
-./models/nemotron/NVIDIA-Nemotron-3-Nano-Omni-30B-A3B-Reasoning-UD-Q4_K_XL.gguf
-./models/nemotron/mmproj-BF16.gguf
-```
+**Already have it elsewhere?** Just point the launcher at your HF local-dir — no re-download:
 
----
+```bash
+export PAPERTRAIL_MODELS_ROOT=/mnt/chuno-models/llms   # dir that contains the repo folder
+```
 
 ### Step 2 — Start the inference server
 
-Pick the method that matches your setup.
-
-#### Option A — Docker (recommended)
-
-Copy the example env file and fill in the model paths:
+One command. It parses `llama-server --help`, applies the verified Nemotron flags (`--mmproj`, `--jinja`, `--fit on`, `--ctx-size 32768`, `--n-gpu-layers 99`, …), auto-discovers your model + projector, and launches it.
 
 ```bash
-cp llama-server.env.example llama-server.env
+uv sync
+
+./scripts/serve.sh                  # Docker, thinking on, detached (default)
+BACKEND=local ./scripts/serve.sh    # use a local llama-server binary instead
+THINKING=off ./scripts/serve.sh     # demo speed (no reasoning)
+DRYRUN=1 ./scripts/serve.sh         # print the exact command without launching
 ```
 
-Edit `llama-server.env`:
-```env
-LLAMA_ARG_MODEL=/models/nemotron/NVIDIA-Nemotron-3-Nano-Omni-30B-A3B-Reasoning-UD-Q4_K_XL.gguf
-LLAMA_ARG_MMPROJ=/models/nemotron/mmproj-BF16.gguf
-LLAMA_ARG_ALIAS=nemotron
-LLAMA_ARG_MODELS_DIR=/models
-LLAMA_ARG_MODELS_MAX=1
-LLAMA_ARG_THREADS=1
-LLAMA_ARG_FLASH_ATTN=1
-LLAMA_ARG_N_BATCH=4096
-LLAMA_ARG_N_UBATCH=2048
-LLAMA_ARG_N_GPU_LAYERS=99
-LLAMA_ARG_CTX_SIZE=32768
-LLAMA_ARG_HOST=0.0.0.0
-LLAMA_ARG_PORT=8080
-LLAMA_ARG_TEMP=1.0
-LLAMA_ARG_TOP_P=1.0
-LLAMA_ARG_TOP_K=0
-LLAMA_ARG_JINJA=true
-LLAMA_ARG_LOAD_TIMEOUT=300
-```
+Override any server flag inline, e.g. `./scripts/serve.sh --ctx-size 16384 --port 8001`.
+Stop a detached Docker server with `docker rm -f papertrail-llama`.
 
-Then start the container, mounting your local models directory:
+**Configuration** (all optional, via env):
 
-```bash
-docker run --rm --gpus all \
-  --env-file llama-server.env \
-  -p 8080:8080 \
-  -v "$(pwd)/models:/models" \
-  ghcr.io/ggml-org/llama.cpp:server-cuda
-```
+| Env var | Default | Meaning |
+|---|---|---|
+| `PAPERTRAIL_MODELS_ROOT` | `./models` | Your HF local-dir (mounted to `/models` in Docker) |
+| `PAPERTRAIL_MODEL_REPO` | `NVIDIA-Nemotron-3-Nano-Omni-30B-A3B-Reasoning-GGUF` | Repo subdir to load |
+| `PAPERTRAIL_QUANT` | `UD-Q4_K_XL` | Preferred quant when multiple GGUFs exist |
+| `PAPERTRAIL_MODEL` / `PAPERTRAIL_MMPROJ` | (auto) | Full paths, override discovery entirely |
 
-> If you have models on an NFS share, replace the `-v` mount with a Docker volume pointing at your NFS path. See the [docker-compose example](#docker-compose) below.
-
-#### Option B — Local llama.cpp binary
-
-```bash
-MODEL_DIR=./models/nemotron
-MODEL=${MODEL_DIR}/NVIDIA-Nemotron-3-Nano-Omni-30B-A3B-Reasoning-UD-Q4_K_XL.gguf
-MMPROJ=${MODEL_DIR}/mmproj-BF16.gguf
-
-llama-server \
-  -m ${MODEL} \
-  --mmproj ${MMPROJ} \
-  --port 8080 \
-  --host 0.0.0.0 \
-  --n-gpu-layers 99 \
-  --jinja \
-  --ctx-size 32768
-```
-
-> `--n-gpu-layers 99` = full offload to VRAM. Reduce if OOM; the model needs ~25 GB across VRAM + system RAM for Q4_K_XL.
+Loading a different model is just `PAPERTRAIL_MODEL_REPO=<repo> ./scripts/serve.sh`.
 
 #### Verify the server is up
 
@@ -108,6 +76,18 @@ llama-server \
 curl http://localhost:8080/health
 # → {"status":"ok"}
 ```
+
+#### Under the hood / manual control
+
+The launcher entrypoint is `python -m papertrail.inference.server.server` (logic lives in `args.py`). See the exact `docker run`/`llama-server` command it builds with `--print`, or the equivalent compose env with `--print-env`:
+```bash
+uv run python -m papertrail.inference.server.server --print
+uv run python -m papertrail.inference.server.server --print-env > llama-server.env
+```
+
+> Defaults rely on `--fit on` with **no** pinned `--n-gpu-layers`, so llama.cpp auto-offloads as many layers as fit in free VRAM (the rest run on CPU). The 22.3 GiB Q4 model needs ~23 GiB free for *full* GPU offload — close GPU apps / run headless, then add `--n-gpu-layers 99` for max speed.
+
+After switching to a new llama.cpp build, refresh the known flags with `--refresh-help`.
 
 ---
 
