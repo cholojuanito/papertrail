@@ -82,8 +82,8 @@ class ExtractedExpense(BaseModel):
 # the model knows the exact output contract. Keep this byte-stable: it is part of
 # the training data AND the inference prompt, and changing it invalidates a tune.
 EXTRACTION_INSTRUCTION = (
-    "You are an expense-document extractor. Read the attached medical expense "
-    "document (receipt, invoice, or insurance EOB) and return ONLY a JSON object "
+    "Read the attached medical expense document "
+    "(receipt, invoice, or insurance EOB) and return ONLY a JSON object "
     "with these fields:\n"
     '  "merchant": string or null — the business/provider name\n'
     '  "date": string or null — service or purchase date as YYYY-MM-DD\n'
@@ -91,6 +91,6 @@ EXTRACTION_INSTRUCTION = (
     '  "currency": string — ISO currency code, default "USD"\n'
     '  "provider_type": one of "pharmacy" | "dental" | "vision" | "medical" | "other"\n'
     '  "line_items": array of {"description": string, "amount": number or null}\n'
-    '  "patient": string or null — patient name if present\n'
+    '  "patient": string or null — patient name\n'
     "Use null for any field you cannot read. Do not invent values. Output JSON only."
 )
