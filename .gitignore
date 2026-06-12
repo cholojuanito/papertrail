@@ -162,3 +162,10 @@ cython_debug/
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 #.idea/
 
+
+# PaperTrail — generated data & model artifacts (never commit; regenerated from seed)
+/data/
+/models/
+*.gguf
+/llama-server.env
+/outputs/
