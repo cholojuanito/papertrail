@@ -23,14 +23,14 @@ from papertrail.events import Done, Event, Failed, Stage, Token
 from papertrail.inference.client import BasePaperTrailClient, get_client
 from papertrail.preprocess import load_document
 from papertrail.schema import EXTRACTION_INSTRUCTION, ProcessedExpense
-from papertrail.storage import Repository
+# from papertrail.storage import Repository
 
 
 def process_document(
     path: str | Path,
     *,
     client: BasePaperTrailClient | None = None,
-    repo: Repository | None = None,
+    # repo: Repository | None = None,
     instruction: str = EXTRACTION_INSTRUCTION,
     doc_type: str = "upload",
 ) -> ProcessedExpense:
@@ -44,12 +44,12 @@ def process_document(
 
     result = ProcessedExpense(expense=expense, eligibility=verdict, readiness=readiness)
 
-    if repo is not None:
-        doc_id = repo.add_document(
-            Path(path).name, path, doc_type, raw_model_output=expense.model_dump_json()
-        )
-        result.document_id = doc_id
-        result.expense_id = repo.add_expense(doc_id, expense, verdict, readiness)
+    # if repo is not None:
+    #     doc_id = repo.add_document(
+    #         Path(path).name, path, doc_type, raw_model_output=expense.model_dump_json()
+    #     )
+    #     result.document_id = doc_id
+    #     result.expense_id = repo.add_expense(doc_id, expense, verdict, readiness)
 
     return result
 
@@ -58,7 +58,7 @@ def process_document_stream(
     path: str | Path,
     *,
     client: BasePaperTrailClient | None = None,
-    repo: Repository | None = None,
+    # repo: Repository | None = None,
     instruction: str = EXTRACTION_INSTRUCTION,
     doc_type: str = "upload",
 ) -> Iterator[Event]:
@@ -89,13 +89,13 @@ def process_document_stream(
         yield Stage("scoring", "scoring audit readiness…")
         readiness = score(expense)
         result = ProcessedExpense(expense=expense, eligibility=verdict, readiness=readiness)
-        if repo is not None:
-            yield Stage("storage", "saving record…")
-            doc_id = repo.add_document(
-                Path(path).name, path, doc_type, raw_model_output=expense.model_dump_json()
-            )
-            result.document_id = doc_id
-            result.expense_id = repo.add_expense(doc_id, expense, verdict, readiness)
+        # if repo is not None:
+        #     yield Stage("storage", "saving record…")
+        #     doc_id = repo.add_document(
+        #         Path(path).name, path, doc_type, raw_model_output=expense.model_dump_json()
+        #     )
+        #     result.document_id = doc_id
+        #     result.expense_id = repo.add_expense(doc_id, expense, verdict, readiness)
         yield Done(result)
     except Exception as exc:  # surface as a terminal event, don't crash the stream
         yield Failed(f"{type(exc).__name__}: {exc}")
