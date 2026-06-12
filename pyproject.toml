@@ -17,6 +17,8 @@ dependencies = [
     "pandas",
     "numpy",
     "huggingface_hub",
+    # OpenAI-compatible client for the llama-server endpoint
+    "openai",
 ]
 
 [project.optional-dependencies]
@@ -48,6 +50,10 @@ dev = [
     "pytest",
     "pytest-asyncio",
 ]
+
+[project.scripts]
+papertrail-serve-app = "papertrail.app.main:main"
+papertrail-serve-llm = "papertrail.inference.server.server:main"
 
 [build-system]
 requires = ["hatchling"]
