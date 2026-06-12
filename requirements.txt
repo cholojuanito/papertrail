@@ -1,0 +1,5 @@
+gradio>=4.0.0
+pillow
+pdf2image
+openai
+huggingface_hub
