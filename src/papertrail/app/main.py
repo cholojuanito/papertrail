@@ -81,7 +81,7 @@ def build_demo() -> gr.Blocks:
 
 def main():
     demo = build_demo()
-    demo.launch()
+    demo.queue().launch()
 
 if __name__ == "__main__":
     main()
